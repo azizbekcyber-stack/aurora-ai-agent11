@@ -1,6 +1,0 @@
- 2026-06-11 15:51:17 App\Jobs\GeneratePostVariantsJob .. RUNNING
- 2026-06-11 15:51:17 App\Jobs\GeneratePostVariantsJob .. 76.11ms DONE
- 2026-06-11 20:14:33 App\Jobs\GeneratePostVariantsJob .. RUNNING
- 2026-06-11 20:14:33 App\Jobs\GeneratePostVariantsJob .. 46.96ms DONE
- 2026-06-11 20:32:30 App\Jobs\PublishTelegramPostJob .. RUNNING
- 2026-06-11 20:32:30 App\Jobs\PublishTelegramPostJob .. 26.94ms DONE
