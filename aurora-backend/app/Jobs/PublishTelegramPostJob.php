@@ -29,7 +29,8 @@ class PublishTelegramPostJob implements ShouldQueue
             try {
                 $bot->sendMessage(
                     $draft->user->telegramAccount?->telegram_user_id,
-                    $exception->getMessage() ?: 'Publishing failed. Your draft is still saved and can be retried.',
+                    $exception->getMessage()
+                        ?: "⚠️ <b>Publishing failed</b>\n\nYour draft is still saved. Please check channel permissions and try again.",
                 );
             } catch (Throwable) {
                 //
@@ -46,8 +47,8 @@ class PublishTelegramPostJob implements ShouldQueue
         }
 
         $message = $result->success
-            ? 'Published successfully to your connected Telegram channel.'
-            : 'Publishing failed. Your draft is still saved and can be retried.';
+            ? "✅ <b>Published successfully</b>\n\nYour post is now live in the connected Telegram channel."
+            : "⚠️ <b>Publishing failed</b>\n\nYour draft is still saved. Please check channel permissions and try again.";
 
         try {
             $bot->sendMessage($chatId, $message);

@@ -14,6 +14,7 @@ use App\Services\Auth\CurrentUserResolver;
 use App\Services\Drafts\DraftStateService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 class DraftController extends Controller
@@ -44,9 +45,11 @@ class DraftController extends Controller
         $validated = $request->validate([
             'prompt' => ['required', 'string', 'max:10000'],
             'image' => ['nullable', 'image', 'max:10240'],
+            'image_data' => ['nullable', 'string'],
+            'image_mime_type' => ['required_with:image_data', 'string', 'in:image/jpeg,image/png,image/webp'],
         ]);
 
-        $imagePath = $request->file('image')?->store("web/{$user->id}");
+        $imagePath = $this->storeImage($request, $user->id);
 
         $draft = PostDraft::query()->create([
             'user_id' => $user->id,
@@ -144,5 +147,56 @@ class DraftController extends Controller
     private function authorizeDraft(PostDraft $draft, int $userId): void
     {
         abort_unless((int) $draft->user_id === $userId, 404);
+    }
+
+    private function storeImage(Request $request, int $userId): ?string
+    {
+        if ($request->filled('image_data')) {
+            return $this->storeBase64Image(
+                (string) $request->input('image_data'),
+                (string) $request->input('image_mime_type'),
+                $userId,
+            );
+        }
+
+        return $request->file('image')?->store("web/{$userId}");
+    }
+
+    private function storeBase64Image(string $imageData, string $mimeType, int $userId): string
+    {
+        $contents = base64_decode($imageData, true);
+
+        if ($contents === false) {
+            throw ValidationException::withMessages([
+                'image' => 'The image data is not valid.',
+            ]);
+        }
+
+        $maxBytes = (int) config('aurora.max_image_bytes', 10 * 1024 * 1024);
+
+        if (strlen($contents) > $maxBytes) {
+            throw ValidationException::withMessages([
+                'image' => 'The image may not be greater than 10 MB.',
+            ]);
+        }
+
+        $detectedMime = (new \finfo(FILEINFO_MIME_TYPE))->buffer($contents) ?: '';
+
+        if ($detectedMime !== $mimeType) {
+            throw ValidationException::withMessages([
+                'image' => 'The image type is not supported.',
+            ]);
+        }
+
+        $extension = match ($mimeType) {
+            'image/png' => 'png',
+            'image/webp' => 'webp',
+            default => 'jpg',
+        };
+
+        $path = sprintf('web/%s/%s.%s', $userId, uniqid('image_', true), $extension);
+        Storage::disk('local')->put($path, $contents);
+
+        return $path;
     }
 }

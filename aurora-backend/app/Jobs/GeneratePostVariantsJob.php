@@ -55,8 +55,8 @@ class GeneratePostVariantsJob implements ShouldQueue
             }
         } catch (Throwable $exception) {
             $draft->aiGenerationLogs()->create([
-                'provider' => 'openai',
-                'model' => (string) config('services.openai.model_text', 'gpt-5-mini'),
+                'provider' => filled(config('services.gemini.key')) ? 'gemini' : 'fake',
+                'model' => (string) config('services.gemini.model_text', 'gemini-2.5-flash'),
                 'status' => AiGenerationStatus::Failed,
                 'error_message' => $exception->getMessage(),
             ]);
@@ -67,7 +67,7 @@ class GeneratePostVariantsJob implements ShouldQueue
                 try {
                     $bot->sendMessage(
                         $draft->user->telegramAccount?->telegram_user_id,
-                        'Could not generate post variants. Please try again.',
+                        "⚠️ <b>I could not create post options</b>\n\nPlease try again in a moment. If it repeats, check the AI API key or quota.",
                     );
                 } catch (Throwable) {
                     //

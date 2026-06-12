@@ -71,13 +71,13 @@ class TelegramWebhookController extends Controller
 
         if ($this->isCommand($text, '/start')) {
             $account->forceFill(['pending_action' => null])->save();
-            $this->bot->sendMessage($chatId, "Welcome to Aurora.\n\nSend /connect_channel to connect your Telegram channel, then send me a post idea or an image with a caption.");
+            $this->bot->sendMessage($chatId, "👋 <b>Welcome to Aurora</b>\n\nI turn your ideas and images into polished Telegram posts.\n\n1. Send /connect_channel to connect your channel.\n2. Send a post idea, or send an image with a caption.\n3. Choose one of 3 AI-written options and approve publishing.");
 
             return;
         }
 
         if ($this->isCommand($text, '/help')) {
-            $this->bot->sendMessage($chatId, "Commands:\n/start - start Aurora\n/connect_channel - connect one channel\n\nAfter your channel is connected, send a text prompt or an image with a caption. Aurora will generate 3 variants and wait for your approval before publishing.");
+            $this->bot->sendMessage($chatId, "🧭 <b>Aurora commands</b>\n\n/start — restart the assistant\n/connect_channel — connect your Telegram channel\n/help — show this guide\n\nOnce your channel is connected, send a prompt or an image with a caption. I’ll prepare 3 post options and wait for your approval before publishing.");
 
             return;
         }
@@ -92,7 +92,7 @@ class TelegramWebhookController extends Controller
             }
 
             $account->forceFill(['pending_action' => 'connect_channel'])->save();
-            $this->bot->sendMessage($chatId, "Add this bot as an admin to your target channel with post permission. Then send the channel username, for example @your_channel, or forward a message from that channel.");
+            $this->bot->sendMessage($chatId, "🔌 <b>Connect your channel</b>\n\nAdd this bot as an admin to your Telegram channel and enable posting permission.\n\nThen send the channel username, for example <code>@your_channel</code>, or forward a message from that channel.");
 
             return;
         }
@@ -113,7 +113,7 @@ class TelegramWebhookController extends Controller
                 return;
             }
 
-            $this->bot->sendMessage($chatId, 'Please send the channel username or forward a message from the channel.');
+            $this->bot->sendMessage($chatId, '📎 Please send the channel username, for example <code>@your_channel</code>, or forward a message from that channel.');
 
             return;
         }
@@ -163,19 +163,19 @@ class TelegramWebhookController extends Controller
         $channel = $account->user->telegramChannel;
 
         if (! $channel || $channel->status !== ChannelStatus::Connected) {
-            $this->bot->sendMessage($chatId, 'No Telegram channel is connected yet. Please connect a channel first.');
+            $this->bot->sendMessage($chatId, '🔌 No Telegram channel is connected yet. Send /connect_channel first, then I can prepare and publish posts for you.');
 
             return;
         }
 
         if (! $channel->bot_can_post_messages) {
-            $this->bot->sendMessage($chatId, 'The bot does not have permission to post in this channel. Please add the bot as an admin and enable post permission.');
+            $this->bot->sendMessage($chatId, '🔐 I cannot post to this channel yet. Please add the bot as an admin and enable post permission.');
 
             return;
         }
 
         if ($text === '') {
-            $this->bot->sendMessage($chatId, 'Please send a text prompt, or send an image with a caption prompt.');
+            $this->bot->sendMessage($chatId, '✍️ Please send a text prompt, or send an image with a caption so I know what kind of post to create.');
 
             return;
         }
@@ -183,7 +183,7 @@ class TelegramWebhookController extends Controller
         try {
             $imagePath = $this->files->downloadLargestPhoto($message, $account->user_id);
         } catch (Throwable $exception) {
-            $this->bot->sendMessage($chatId, 'Could not download the image. Please try a JPG, PNG, or WebP image under 10 MB.');
+            $this->bot->sendMessage($chatId, '🖼️ I could not read that image. Please try a JPG, PNG, or WebP image under 10 MB.');
 
             return;
         }
@@ -199,7 +199,7 @@ class TelegramWebhookController extends Controller
 
         $this->state->markGenerating($draft);
         GeneratePostVariantsJob::dispatch($draft->id);
-        $this->bot->sendMessage($chatId, 'Generating 3 post variants...');
+        $this->bot->sendMessage($chatId, "🧠 <b>Creating 3 post options...</b>\n\nI’m shaping the idea for Telegram. This can take a few seconds.");
     }
 
     private function connectChannelFromText(TelegramAccount $account, string $chatId, string $identifier): void
@@ -209,19 +209,19 @@ class TelegramWebhookController extends Controller
             $account->forceFill(['pending_action' => null])->save();
             $this->sendChannelConnectionResult($chatId, $channel);
         } catch (Throwable) {
-            $this->bot->sendMessage($chatId, 'The bot does not have permission to post in this channel. Please add the bot as an admin and enable post permission.');
+            $this->bot->sendMessage($chatId, '🔐 I could not connect this channel. Please make sure the bot is an admin and has permission to post.');
         }
     }
 
     private function sendChannelConnectionResult(string $chatId, object $channel): void
     {
         if ($channel->status === ChannelStatus::Connected) {
-            $this->bot->sendMessage($chatId, 'Channel connected. Send me a post idea when you are ready.');
+            $this->bot->sendMessage($chatId, "✅ <b>Channel connected</b>\n\nSend me a post idea or an image with a caption whenever you’re ready.");
 
             return;
         }
 
-        $this->bot->sendMessage($chatId, 'The bot does not have permission to post in this channel. Please add the bot as an admin and enable post permission.');
+        $this->bot->sendMessage($chatId, '🔐 I found the channel, but I do not have post permission yet. Please make the bot an admin and enable posting.');
     }
 
     private function selectVariant(PostDraft $draft, int $variantId): void
@@ -235,20 +235,20 @@ class TelegramWebhookController extends Controller
     {
         $this->state->approve($draft);
         PublishTelegramPostJob::dispatch($draft->id);
-        $this->bot->sendMessage($draft->user->telegramAccount?->telegram_user_id, 'Approved. Publishing started...');
+        $this->bot->sendMessage($draft->user->telegramAccount?->telegram_user_id, "🚀 <b>Approved</b>\n\nPublishing to your connected Telegram channel now...");
     }
 
     private function regenerate(PostDraft $draft): void
     {
         $this->state->regenerate($draft);
         GeneratePostVariantsJob::dispatch($draft->id);
-        $this->bot->sendMessage($draft->user->telegramAccount?->telegram_user_id, 'Regenerating 3 post variants...');
+        $this->bot->sendMessage($draft->user->telegramAccount?->telegram_user_id, "🔄 <b>Regenerating</b>\n\nI’m creating 3 fresh options with a new angle.");
     }
 
     private function cancel(PostDraft $draft): void
     {
         $this->state->cancel($draft);
-        $this->bot->sendMessage($draft->user->telegramAccount?->telegram_user_id, 'Draft cancelled.');
+        $this->bot->sendMessage($draft->user->telegramAccount?->telegram_user_id, '✖️ Draft cancelled. Send a new idea anytime.');
     }
 
     private function accountFor(array $from): TelegramAccount

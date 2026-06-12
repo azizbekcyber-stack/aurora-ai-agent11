@@ -99,7 +99,7 @@ const submit = () => {
 
     <label class="field">
       <span>Banned words</span>
-      <textarea v-model="form.banned_words" class="textarea" />
+      <textarea v-model="form.banned_words" class="textarea" placeholder="One word per line, or comma separated" />
     </label>
 
     <div class="button-row">

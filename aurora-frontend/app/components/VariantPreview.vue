@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Check, ShieldAlert } from '@lucide/vue'
+import { Check, MessageSquareText, ShieldAlert } from '@lucide/vue'
 import type { PostVariant } from '~/composables/useApi'
 
 defineProps<{
@@ -15,14 +15,19 @@ defineEmits<{
 <template>
   <article class="variant-card" :class="{ selected }">
     <div class="card-row">
-      <h3>{{ variant.title || 'Untitled variant' }}</h3>
+      <div class="button-row">
+        <span class="metric-icon">
+          <MessageSquareText :size="16" aria-hidden="true" />
+        </span>
+        <h3>{{ variant.title || 'Untitled variant' }}</h3>
+      </div>
       <span v-if="selected" class="status-badge status-good">
         <Check :size="14" aria-hidden="true" />
         selected
       </span>
     </div>
 
-    <p class="prewrap">{{ variant.telegram_text }}</p>
+    <p class="prewrap" style="margin: 0">{{ variant.telegram_text }}</p>
 
     <div v-if="variant.risk_flags?.length" class="muted button-row">
       <ShieldAlert :size="16" aria-hidden="true" />
@@ -30,9 +35,9 @@ defineEmits<{
     </div>
 
     <div class="button-row">
-      <button class="btn" type="button" :disabled="selected" @click="$emit('select', variant.id)">
+      <button class="btn" :class="selected ? 'ghost' : 'primary'" type="button" :disabled="selected" @click="$emit('select', variant.id)">
         <Check :size="16" aria-hidden="true" />
-        Select
+        {{ selected ? 'Selected' : 'Select variant' }}
       </button>
     </div>
   </article>

@@ -48,6 +48,7 @@ class DraftWorkflowTest extends TestCase
 
     public function test_generation_job_stores_three_variants_and_brand_profile_payload(): void
     {
+        config(['services.gemini.key' => null]);
         $user = User::factory()->create();
         BrandProfile::query()->create([
             'user_id' => $user->id,

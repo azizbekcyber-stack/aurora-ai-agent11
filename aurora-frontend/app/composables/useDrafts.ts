@@ -1,5 +1,50 @@
 import type { Paginated, PostDraft } from './useApi'
 
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024
+const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+
+export const getDraftErrorMessage = (exception: any, fallback = 'Action failed.') => {
+  const errors = exception?.data?.errors
+
+  if (errors && typeof errors === 'object') {
+    const first = Object.values(errors).flat().find(Boolean)
+
+    if (typeof first === 'string') {
+      return first
+    }
+  }
+
+  return exception?.data?.message || exception?.message || fallback
+}
+
+const imageToPayload = async (image: File) => {
+  if (!SUPPORTED_IMAGE_TYPES.includes(image.type)) {
+    throw new Error('Please attach a JPG, PNG, or WebP image.')
+  }
+
+  if (image.size > MAX_IMAGE_BYTES) {
+    throw new Error('Please attach an image under 10 MB.')
+  }
+
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result || ''))
+    reader.onerror = () => reject(new Error('Could not read the selected image.'))
+    reader.readAsDataURL(image)
+  })
+
+  const [, base64 = ''] = dataUrl.split(',')
+
+  if (!base64) {
+    throw new Error('Could not read the selected image.')
+  }
+
+  return {
+    image_data: base64,
+    image_mime_type: image.type
+  }
+}
+
 export const useDrafts = () => {
   const { request } = useApi()
   const drafts = useState<PostDraft[]>('drafts', () => [])
@@ -34,10 +79,16 @@ export const useDrafts = () => {
     }
   }
 
-  const createDraft = async (prompt: string) => {
+  const createDraft = async (prompt: string, image?: File | null) => {
+    const body: Record<string, string> = { prompt }
+
+    if (image) {
+      Object.assign(body, await imageToPayload(image))
+    }
+
     const draft = await request<PostDraft>('/drafts', {
       method: 'POST',
-      body: { prompt }
+      body
     })
     drafts.value = [draft, ...drafts.value]
     return draft

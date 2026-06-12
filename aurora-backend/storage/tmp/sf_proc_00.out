@@ -1,0 +1,2 @@
+[Fri Jun 12 20:23:57 2026] 127.0.0.1:65126 [GET] URI: /api/v1/health
+[Fri Jun 12 20:23:57 2026] 127.0.0.1:65127 [POST] URI: /api/v1/drafts

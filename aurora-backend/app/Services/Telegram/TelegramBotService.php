@@ -102,23 +102,26 @@ class TelegramBotService
             return;
         }
 
-        $lines = ["<b>Your 3 post variants are ready.</b>"];
+        $lines = [
+            "✨ <b>Your 3 post variants are ready</b>",
+            "<i>Pick the best direction, regenerate if you want a fresh angle, or cancel this draft.</i>",
+        ];
 
         foreach ($draft->variants as $index => $variant) {
             $number = $index + 1;
-            $lines[] = "\n<b>Variant {$number}: ".e($variant->title ?: 'Untitled')."</b>\n".e($variant->telegram_text);
+            $lines[] = "\n<b>Option {$number} · ".e($variant->title ?: 'Untitled')."</b>\n".e($variant->telegram_text);
         }
 
         $buttons = $draft->variants->values()->map(function ($variant, int $index) use ($draft): array {
             return [
-                'text' => 'Select Variant '.($index + 1),
+                'text' => '✅ Choose Option '.($index + 1),
                 'callback_data' => "variant:{$draft->id}:{$variant->id}",
             ];
         })->chunk(1)->map(fn ($row) => $row->values()->all())->values()->all();
 
         $buttons[] = [
-            ['text' => 'Regenerate', 'callback_data' => "regenerate:{$draft->id}"],
-            ['text' => 'Cancel', 'callback_data' => "cancel:{$draft->id}"],
+            ['text' => '🔄 Regenerate', 'callback_data' => "regenerate:{$draft->id}"],
+            ['text' => '✖️ Cancel', 'callback_data' => "cancel:{$draft->id}"],
         ];
 
         $this->sendMessage($chatId, implode("\n", $lines), ['inline_keyboard' => $buttons]);
@@ -133,15 +136,18 @@ class TelegramBotService
             return;
         }
 
-        $text = "<b>Selected variant:</b>\n".e($draft->selectedVariant->telegram_text)."\n\nApprove publishing to your connected channel?";
+        $text = "✅ <b>Selected draft</b>\n"
+            .e($draft->selectedVariant->telegram_text)
+            ."\n\n🚀 <b>Ready to publish?</b>\n"
+            ."I’ll send this to your connected Telegram channel.";
 
         $this->sendMessage($chatId, $text, [
             'inline_keyboard' => [
                 [
-                    ['text' => 'Approve & Publish', 'callback_data' => "approve:{$draft->id}"],
+                    ['text' => '🚀 Approve & Publish', 'callback_data' => "approve:{$draft->id}"],
                 ],
                 [
-                    ['text' => 'Cancel', 'callback_data' => "cancel:{$draft->id}"],
+                    ['text' => '✖️ Cancel Draft', 'callback_data' => "cancel:{$draft->id}"],
                 ],
             ],
         ]);

@@ -49,7 +49,8 @@ class GeminiPostGenerationService implements PostGenerator
             ->post($this->endpoint($model), $payload);
 
         if ($response->failed()) {
-            throw new InvalidAiResponseException('Gemini generation request failed.');
+            $message = $response->json('error.message') ?: $response->body();
+            throw new InvalidAiResponseException('Gemini generation request failed: '.str($message)->limit(500));
         }
 
         $responsePayload = $response->json();
