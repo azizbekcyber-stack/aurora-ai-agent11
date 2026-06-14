@@ -84,12 +84,21 @@ export const useApi = () => {
     sameSite: 'lax',
     default: () => null
   })
+  const dashboardToken = useCookie<string | null>('aurora_dashboard_token', {
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    default: () => null
+  })
 
   const request = async <T>(path: string, options: Parameters<typeof $fetch<T>>[1] = {}) => {
     const headers = new Headers(options?.headers as HeadersInit | undefined)
 
     if (userId.value) {
       headers.set('X-Aurora-User-Id', userId.value)
+    }
+
+    if (dashboardToken.value) {
+      headers.set('X-Aurora-Dashboard-Token', dashboardToken.value)
     }
 
     return await $fetch<T>(path, {
@@ -101,7 +110,8 @@ export const useApi = () => {
 
   return {
     request,
-    userId
+    userId,
+    dashboardToken
   }
 }
 

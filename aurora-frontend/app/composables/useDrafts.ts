@@ -4,6 +4,10 @@ const MAX_IMAGE_BYTES = 10 * 1024 * 1024
 const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 
 export const getDraftErrorMessage = (exception: any, fallback = 'Action failed.') => {
+  if (exception?.status === 401 || exception?.statusCode === 401) {
+    return 'Dashboard access token is missing or invalid. Open Access and enter the production token.'
+  }
+
   const errors = exception?.data?.errors
 
   if (errors && typeof errors === 'object') {

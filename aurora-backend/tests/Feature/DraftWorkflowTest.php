@@ -27,6 +27,21 @@ class DraftWorkflowTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_dashboard_token_is_required_when_configured(): void
+    {
+        config(['aurora.dashboard_token' => 'secret-dashboard-token']);
+
+        $this->getJson('/api/v1/drafts')
+            ->assertUnauthorized()
+            ->assertJson([
+                'message' => 'Dashboard access token is missing or invalid.',
+            ]);
+
+        $this->getJson('/api/v1/drafts', [
+            'X-Aurora-Dashboard-Token' => 'secret-dashboard-token',
+        ])->assertOk();
+    }
+
     public function test_draft_can_be_created_and_enters_generating_state(): void
     {
         Queue::fake();

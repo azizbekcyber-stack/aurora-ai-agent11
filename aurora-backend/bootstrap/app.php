@@ -13,6 +13,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->alias([
+            'dashboard.token' => \App\Http\Middleware\RequireDashboardToken::class,
+        ]);
+
         $middleware->validateCsrfTokens(except: [
             'webhook/telegram',
         ]);
