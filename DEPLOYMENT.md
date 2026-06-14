@@ -50,7 +50,7 @@ php artisan key:generate --show
 
 ## Backend Services
 
-Create one web service from `aurora-backend`.
+Create one web service from `aurora-backend`. The start script runs both the Laravel HTTP server and a lightweight queue worker in the same container. This keeps uploaded images available to queued AI/publish jobs on trial hosting.
 
 Build:
 
@@ -64,15 +64,7 @@ Start command:
 ./deploy/start.sh
 ```
 
-Create one worker service using the same image/root directory.
-
-Worker command:
-
-```bash
-./deploy/worker.sh
-```
-
-The worker must stay online. Without it, drafts can remain in `generating`.
+Do not create a separate worker service for the trial deploy unless you also move image storage to S3/R2 or another shared storage service.
 
 ## Frontend Environment
 
@@ -146,7 +138,7 @@ Dashboard routes are excluded in `robots.txt`; the public `/` landing page is in
 - Backend URL opens `/api/v1/health`.
 - Frontend URL opens `/`.
 - `/login` accepts dashboard token.
-- Queue worker is running.
+- Queue worker is running inside the backend service.
 - PostgreSQL migrations completed.
 - Telegram webhook points to production backend.
 - Bot can create drafts.
