@@ -1,5 +1,7 @@
 FROM php:8.4-cli
 
+ENV LOG_CHANNEL=stderr
+
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         git \

@@ -11,6 +11,7 @@ use App\Services\Drafts\DraftStateService;
 use App\Services\Telegram\TelegramBotService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class GeneratePostVariantsJob implements ShouldQueue
@@ -54,6 +55,13 @@ class GeneratePostVariantsJob implements ShouldQueue
                 $bot->sendGeneratedVariants($draft->refresh());
             }
         } catch (Throwable $exception) {
+            Log::warning('AI generation failed', [
+                'draft_id' => $draft->id,
+                'provider' => filled(config('services.gemini.key')) ? 'gemini' : 'fake',
+                'exception' => $exception::class,
+                'message' => $exception->getMessage(),
+            ]);
+
             $draft->aiGenerationLogs()->create([
                 'provider' => filled(config('services.gemini.key')) ? 'gemini' : 'fake',
                 'model' => (string) config('services.gemini.model_text', 'gemini-2.5-flash'),
