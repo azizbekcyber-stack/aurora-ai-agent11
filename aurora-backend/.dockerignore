@@ -8,7 +8,3 @@ node_modules
 vendor
 storage/logs/*.log
 storage/tmp/*
-first())
-get())
-only(['id'
-toArray())
