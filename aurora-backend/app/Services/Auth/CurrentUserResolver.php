@@ -4,24 +4,17 @@ namespace App\Services\Auth;
 
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 
 class CurrentUserResolver
 {
     public function resolve(Request $request): User
     {
-        $userId = $request->header('X-Aurora-User-Id') ?: $request->query('user_id');
+        $user = $request->attributes->get('aurora_user');
 
-        if ($userId) {
-            return User::query()->findOrFail($userId);
+        if ($user instanceof User) {
+            return $user;
         }
 
-        return User::query()->firstOrCreate(
-            ['email' => 'demo@aurora.local'],
-            [
-                'name' => 'Aurora Demo',
-                'password' => Str::password(),
-            ],
-        );
+        abort(401, 'Please connect Telegram to access Aurora.');
     }
 }

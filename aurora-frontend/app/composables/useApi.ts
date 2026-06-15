@@ -71,6 +71,23 @@ export interface BrandProfile {
   banned_words: string[] | null
 }
 
+export interface TelegramAuthStart {
+  code: string
+  expires_at: string
+  telegram_url: string | null
+}
+
+export interface TelegramAuthStatus {
+  authenticated: boolean
+  session_token?: string
+  user?: {
+    id: number
+    name: string
+    telegram: unknown
+    channel: TelegramChannel | null
+  }
+}
+
 interface Paginated<T> {
   data: T[]
   current_page: number
@@ -89,6 +106,11 @@ export const useApi = () => {
     secure: process.env.NODE_ENV === 'production',
     default: () => null
   })
+  const sessionToken = useCookie<string | null>('aurora_session_token', {
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    default: () => null
+  })
 
   const request = async <T>(path: string, options: Parameters<typeof $fetch<T>>[1] = {}) => {
     const headers = new Headers(options?.headers as HeadersInit | undefined)
@@ -101,6 +123,10 @@ export const useApi = () => {
       headers.set('X-Aurora-Dashboard-Token', dashboardToken.value)
     }
 
+    if (sessionToken.value) {
+      headers.set('Authorization', `Bearer ${sessionToken.value}`)
+    }
+
     return await $fetch<T>(path, {
       baseURL: config.public.apiBase,
       ...options,
@@ -111,7 +137,8 @@ export const useApi = () => {
   return {
     request,
     userId,
-    dashboardToken
+    dashboardToken,
+    sessionToken
   }
 }
 

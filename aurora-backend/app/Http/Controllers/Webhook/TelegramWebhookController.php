@@ -13,6 +13,7 @@ use App\Models\PostDraft;
 use App\Models\PostVariant;
 use App\Models\TelegramAccount;
 use App\Models\User;
+use App\Services\Auth\TelegramLoginService;
 use App\Services\Drafts\DraftStateService;
 use App\Services\Telegram\TelegramBotService;
 use App\Services\Telegram\TelegramChannelService;
@@ -26,6 +27,7 @@ class TelegramWebhookController extends Controller
 {
     public function __construct(
         private readonly DraftStateService $state,
+        private readonly TelegramLoginService $logins,
         private readonly TelegramBotService $bot,
         private readonly TelegramFileService $files,
         private readonly TelegramChannelService $channels,
@@ -71,6 +73,13 @@ class TelegramWebhookController extends Controller
 
         if ($this->isCommand($text, '/start')) {
             $account->forceFill(['pending_action' => null])->save();
+            $startPayload = trim(Str::after($text, ' '));
+
+            if (str_starts_with($startPayload, 'login_')) {
+                $this->handleLoginStart($account, $chatId, $startPayload);
+
+                return;
+            }
             $this->bot->sendMessage($chatId, "👋 <b>Welcome to Aurora</b>\n\nI turn your ideas and images into polished Telegram posts.\n\n1. Send /connect_channel to connect your channel.\n2. Send a post idea, or send an image with a caption.\n3. Choose one of 3 AI-written options and approve publishing.");
 
             return;
@@ -103,6 +112,7 @@ class TelegramWebhookController extends Controller
             if ($connected) {
                 $account->forceFill(['pending_action' => null])->save();
                 $this->sendChannelConnectionResult($chatId, $connected);
+                $this->sendDashboardLink($chatId);
 
                 return;
             }
@@ -208,6 +218,7 @@ class TelegramWebhookController extends Controller
             $channel = $this->channels->connectFromIdentifier($account->user, $identifier);
             $account->forceFill(['pending_action' => null])->save();
             $this->sendChannelConnectionResult($chatId, $channel);
+            $this->sendDashboardLink($chatId);
         } catch (Throwable) {
             $this->bot->sendMessage($chatId, '🔐 I could not connect this channel. Please make sure the bot is an admin and has permission to post.');
         }
@@ -229,6 +240,48 @@ class TelegramWebhookController extends Controller
         $variant = PostVariant::query()->findOrFail($variantId);
         $this->state->selectVariant($draft, $variant);
         $this->bot->sendApprovalRequest($draft->refresh());
+    }
+
+    private function handleLoginStart(TelegramAccount $account, string $chatId, string $code): void
+    {
+        $login = $this->logins->claim($code, $account->user);
+
+        if (! $login) {
+            $this->bot->sendMessage($chatId, "⚠️ <b>Login link expired</b>\n\nPlease return to the Aurora website and press Continue with Telegram again.");
+
+            return;
+        }
+
+        $dashboardUrl = rtrim((string) config('aurora.frontend_url'), '/').'/dashboard';
+
+        $this->bot->sendMessage(
+            $chatId,
+            "✅ <b>Telegram connected</b>\n\nYour web dashboard is ready. If you have not connected a channel yet, send /connect_channel or continue from the website.",
+            [
+                'inline_keyboard' => [
+                    [
+                        ['text' => 'Open dashboard', 'url' => $dashboardUrl],
+                    ],
+                ],
+            ],
+        );
+    }
+
+    private function sendDashboardLink(string $chatId): void
+    {
+        $dashboardUrl = rtrim((string) config('aurora.frontend_url'), '/').'/dashboard';
+
+        $this->bot->sendMessage(
+            $chatId,
+            "Open Aurora on the web when you want a larger review workspace.",
+            [
+                'inline_keyboard' => [
+                    [
+                        ['text' => 'Open dashboard', 'url' => $dashboardUrl],
+                    ],
+                ],
+            ],
+        );
     }
 
     private function approveAndPublish(PostDraft $draft): void

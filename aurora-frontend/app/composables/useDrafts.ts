@@ -5,7 +5,7 @@ const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 
 export const getDraftErrorMessage = (exception: any, fallback = 'Action failed.') => {
   if (exception?.status === 401 || exception?.statusCode === 401) {
-    return 'Dashboard access token is missing or invalid. Open Access and enter the production token.'
+    return 'Please connect Telegram before using the dashboard.'
   }
 
   const errors = exception?.data?.errors

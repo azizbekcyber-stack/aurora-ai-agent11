@@ -1,17 +1,21 @@
 <?php
 
+use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BrandProfileController;
 use App\Http\Controllers\Api\DraftController;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\TelegramChannelController;
 use App\Http\Controllers\Webhook\TelegramWebhookController;
-use App\Http\Middleware\RequireDashboardToken;
+use App\Http\Middleware\AuthenticateAuroraUser;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
     Route::get('/health', [HealthController::class, 'show']);
+    Route::post('/auth/telegram/start', [AuthController::class, 'start']);
+    Route::post('/auth/telegram/status', [AuthController::class, 'status']);
 
-    Route::middleware(RequireDashboardToken::class)->group(function () {
+    Route::middleware(AuthenticateAuroraUser::class)->group(function () {
+        Route::get('/auth/me', [AuthController::class, 'me']);
         Route::get('/drafts', [DraftController::class, 'index']);
         Route::post('/drafts', [DraftController::class, 'store']);
         Route::get('/drafts/{draft}', [DraftController::class, 'show']);

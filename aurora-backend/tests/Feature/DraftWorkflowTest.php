@@ -13,6 +13,8 @@ use App\Jobs\PublishTelegramPostJob;
 use App\Models\BrandProfile;
 use App\Models\PostDraft;
 use App\Models\PostVariant;
+use App\Models\TelegramAccount;
+use App\Models\TelegramLoginToken;
 use App\Models\TelegramChannel;
 use App\Models\User;
 use App\Services\Drafts\DraftStateService;
@@ -34,12 +36,59 @@ class DraftWorkflowTest extends TestCase
         $this->getJson('/api/v1/drafts')
             ->assertUnauthorized()
             ->assertJson([
-                'message' => 'Dashboard access token is missing or invalid.',
+                'message' => 'Please connect Telegram to access Aurora.',
             ]);
 
+        $user = User::factory()->create();
         $this->getJson('/api/v1/drafts', [
             'X-Aurora-Dashboard-Token' => 'secret-dashboard-token',
+            'X-Aurora-User-Id' => (string) $user->id,
         ])->assertOk();
+    }
+
+    public function test_telegram_login_challenge_can_be_claimed_from_bot_start(): void
+    {
+        config([
+            'services.telegram.bot_token' => 'test-token',
+            'services.telegram.webhook_secret' => 'webhook-secret',
+        ]);
+
+        Http::fake([
+            'https://api.telegram.org/bottest-token/getMe' => Http::response([
+                'ok' => true,
+                'result' => ['id' => 123, 'username' => 'aurora_test_bot'],
+            ]),
+            'https://api.telegram.org/bottest-token/sendMessage' => Http::response([
+                'ok' => true,
+                'result' => ['message_id' => 1],
+            ]),
+        ]);
+
+        $challenge = $this->postJson('/api/v1/auth/telegram/start')
+            ->assertOk()
+            ->assertJsonPath('telegram_url', fn (string $url) => str_contains($url, 'aurora_test_bot'))
+            ->json('code');
+
+        $this->postJson('/webhook/telegram', [
+            'message' => [
+                'chat' => ['id' => 555],
+                'from' => ['id' => 777, 'first_name' => 'Azizbek'],
+                'text' => "/start {$challenge}",
+            ],
+        ], [
+            'X-Telegram-Bot-Api-Secret-Token' => 'webhook-secret',
+        ])->assertOk();
+
+        $login = TelegramLoginToken::query()->where('code', $challenge)->firstOrFail();
+        $this->assertNotNull($login->session_token);
+        $this->assertDatabaseHas('telegram_accounts', [
+            'telegram_user_id' => '777',
+        ]);
+
+        $this->postJson('/api/v1/auth/telegram/status', ['code' => $challenge])
+            ->assertOk()
+            ->assertJsonPath('authenticated', true)
+            ->assertJsonPath('user.name', 'Azizbek');
     }
 
     public function test_draft_can_be_created_and_enters_generating_state(): void
